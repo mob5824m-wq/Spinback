@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Android / IDE
+*.iml
+.idea/
+captures/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated verification output
+.check/
+
+# Python
+__pycache__/

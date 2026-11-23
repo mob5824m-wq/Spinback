@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Three-cell minimum (2 columns on most launchers) and one control row.
+  Host apps that need a richer widget ship their own provider instead of
+  resizing this one; see docs/WIDGETS.md.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:initialLayout="@layout/soniq_widget"
+    android:minWidth="250dp"
+    android:minHeight="72dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="72dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen"
+    android:description="@string/soniq_widget_description" />
