@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="160" height="160" alt="Spinback logo — white headphones on Google Play Music orange">
+</p>
+
 # Spinback — Google Play Music revival
 
 **Spinback** is an unofficial revival of **Google Play Music** (2011–2020),
@@ -73,11 +77,43 @@ ANDROID_HOME=~/Android/Sdk python3 scripts/compile-check.py --tests
 Requires JDK 17 and an Android SDK with platform 35. The Gradle wrapper pins
 Gradle 8.9 and AGP 8.7.3. Module versions are derived from git — the latest
 `vX.Y.Z` tag, or `X.Y.Z-SNAPSHOT` on later commits — so there is no version
-number to bump.
+number to bump by hand.
 
 No APK or AAR is committed to the repository. Build with the commands above,
 or download the `spinback-google-play-music-debug` /
 `soniq-base-debug-aar` artifacts from the GitHub Actions **Build** workflow.
+
+## Releases
+
+A release is a `vX.Y.Z` tag on `main` plus a `CHANGELOG.md` section — nothing
+else. Pushing the tag runs `.github/workflows/release.yml`, which builds and
+tests both modules and creates the GitHub Release with
+`spinback-google-play-music-<version>-release.apk` (plus the library AAR and
+sources JAR) attached. Versions come from git tags, so the tag *is* the
+version bump (`versionName` and `versionCode` are derived from it).
+
+Three ways to cut one:
+
+```bash
+# 1. Manual (from a clean checkout of main):
+python3 scripts/release.py 0.2.0            # validate and show the plan (dry run)
+python3 scripts/release.py 0.2.0 --yes      # commit the changelog, tag v0.2.0, push both
+
+# 2. Auto-bump (no version to type):
+python3 scripts/release.py --bump patch     # dry run: next patch from the latest tag
+python3 scripts/release.py --bump patch --yes
+```
+
+Or without a local checkout: **Actions → Release → Run workflow** and pick
+`patch` / `minor` / `major` — the workflow bumps, tags, builds and publishes
+the APK for you. Pushing to `main` with `[release]` in the commit message
+(`[release:minor]` / `[release:major]` for a bigger bump) does the same
+automatically; ordinary commits never cut a version.
+
+Add entries under `## [Unreleased]` in `CHANGELOG.md` as you go (or pass
+`--notes "…"`); the script moves them into the new version's section and the
+Release workflow uses them as the GitHub Release notes. A `-rc.1`-style
+suffix (e.g. `v0.2.0-rc.1`) becomes a pre-release.
 
 ## Docs
 

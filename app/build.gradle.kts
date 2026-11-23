@@ -5,10 +5,17 @@ plugins {
 // Same tag-derived version as the library (see the root build script).
 val soniqVersion: String = rootProject.extra["soniqVersion"] as String
 
-/** `1.2.3` → 10203, so every release has a higher versionCode than the last. */
+/** `1.2.3` → 1002003; base-1000 minor/patch slots avoid common SemVer collisions. */
 fun versionCodeOf(version: String): Int {
-    val parts = version.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0)
-    return (parts[0] * 10000 + parts[1] * 100 + parts[2]).coerceAtLeast(1)
+    val parts = version.substringBefore('-').split('.').map {
+        it.toLongOrNull() ?: error("Invalid SemVer component in $version")
+    } + listOf(0L, 0L, 0L)
+    require(parts[0] <= 2100L && parts[1] < 1000L && parts[2] < 1000L) {
+        "SemVer components exceed Android versionCode encoding limits"
+    }
+    val code = parts[0] * 1_000_000L + parts[1] * 1_000L + parts[2]
+    require(code in 1L..2_100_000_000L) { "SemVer version is outside Android versionCode range" }
+    return code.toInt()
 }
 
 android {

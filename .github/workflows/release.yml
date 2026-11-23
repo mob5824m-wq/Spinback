@@ -1,0 +1,194 @@
+# Release Spinback: build the APK and publish a GitHub Release.
+#
+# Three ways to cut a release:
+#   1. Tag (manual):  python3 scripts/release.py 0.2.0 --yes   (or push a v* tag)
+#   2. Auto-bump:     Actions → Release → Run workflow → bump patch/minor/major
+#   3. Auto on main:  push to main with "[release]" in the commit message
+#      (add "[release:minor]" / "[release:major]" for a bigger bump).
+#
+# Every module's version is derived from the vX.Y.Z tag (root build.gradle.kts),
+# so the tag is the whole version bump — there is no version file to edit.
+# The auto-bump paths commit the CHANGELOG, tag, build and create the Release
+# in this one job, because a tag pushed with GITHUB_TOKEN would not trigger
+# a second workflow run.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Auto-bump from the latest tag"
+        type: choice
+        required: true
+        default: patch
+        options: [patch, minor, major]
+
+permissions:
+  contents: write   # push the release commit + tag, create the GitHub Release
+
+jobs:
+  release:
+    # Tag pushes always release. Manual dispatches always release.
+    # Pushes to main only release when the commit asks for it ([release]),
+    # so ordinary feature commits never cut a version.
+    if: >-
+      github.ref_type == 'tag' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+       (contains(github.event.head_commit.message, '[release]') ||
+        contains(github.event.head_commit.message, '[release:minor]') ||
+        contains(github.event.head_commit.message, '[release:major]')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the module versions are derived from the tag
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Validate tag / auto-bump version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          DISPATCH_BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            tag="$REF_NAME"
+            if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error title=Invalid tag::'$tag' is not vX.Y.Z (an optional -suffix is allowed); nothing was published."
+              exit 1
+            fi
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            if [[ "$tag" == v*-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            else echo "prerelease=false" >> "$GITHUB_OUTPUT"; fi
+            echo "mode=tag" >> "$GITHUB_OUTPUT"
+          else
+            # Auto-bump: patch by default, minor/major when asked.
+            bump="patch"
+            if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+              bump="${DISPATCH_BUMP:-patch}"
+            elif [[ "$HEAD_MESSAGE" == *"[release:minor]"* ]]; then
+              bump="minor"
+            elif [[ "$HEAD_MESSAGE" == *"[release:major]"* ]]; then
+              bump="major"
+            fi
+            echo "auto-bump: $bump"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git fetch --quiet origin main:refs/remotes/origin/main
+            git switch --force-create main origin/main
+            # release.py commits the CHANGELOG, tags and pushes both.
+            python3 scripts/release.py --bump "$bump" --yes
+            tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "mode=auto-bump" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build app and library, run unit tests
+        run: |
+          set -o pipefail
+          ./gradlew :soniq-base:assembleRelease :soniq-base:releaseSourcesJar \
+              :app:assembleRelease :soniq-base:testDebugUnitTest \
+              --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Check the derived version matches the tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          derived="$(./gradlew -q :app:properties --no-daemon | awk -F': ' '/^version:/ { print $2 }')"
+          echo "version from build: $derived"
+          if [[ "$derived" != "$VERSION" ]]; then
+            echo "::error title=Version mismatch::Build reports '$derived' for tag v$VERSION."
+            exit 1
+          fi
+
+      - name: Release notes
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set +e
+          python3 scripts/release.py "$VERSION" --print-body > body.md
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "generated=false" >> "$GITHUB_OUTPUT" ;;
+            3) echo "generated=true" >> "$GITHUB_OUTPUT"
+               echo "::warning::CHANGELOG.md has no [$VERSION] section; the release will use auto-generated notes." ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Surface Gradle errors as annotations
+        if: failure()
+        run: |
+          {
+            grep -hE '^e: |What went wrong|Execution failed|Caused by|error:|: Error: |: Fatal: |FAILURE:' build.log 2>/dev/null || true
+            grep -h -A12 'What went wrong' build.log 2>/dev/null || true
+          } | head -60 | while IFS= read -r line; do echo "::error title=gradle::$line"; done
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          GENERATED: ${{ steps.notes.outputs.generated }}
+        run: |
+          # AGP puts the AAR under build/outputs/aar but the sources JAR elsewhere
+          # under build/, so search the whole build directory. Rename the APK to
+          # carry the version so users can tell releases apart at a glance.
+          assets=()
+          while IFS= read -r file; do assets+=("$file"); done < <(
+            find soniq-base/build \( -name '*.aar' -o -name '*sources*.jar' \))
+          apk="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          if [[ -z "$apk" ]]; then
+            echo "::error title=No APK::No release APK under app/build/outputs/apk/release."
+            exit 1
+          fi
+          named="spinback-google-play-music-${VERSION}-release.apk"
+          cp "$apk" "$named"
+          assets+=("$named")
+          echo "assets: ${assets[*]}"
+          if [[ " ${assets[*]} " != *sources* ]]; then
+            echo "::warning::No sources JAR found under soniq-base/build; the GitHub Release will lack it."
+          fi
+          prerelease_flag=(); [[ "$PRERELEASE" == "true" ]] && prerelease_flag=(--prerelease)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Release drafted in the GitHub UI (which pushed the tag): add the assets.
+            gh release upload "$TAG" "${assets[@]}" --clobber
+            if [[ -z "$(gh release view "$TAG" --json body -q .body | tr -d '[:space:]')" ]]; then
+              if [[ "$GENERATED" == "true" ]]; then
+                gh release edit "$TAG" --generate-notes
+              else
+                gh release edit "$TAG" --notes-file body.md
+              fi
+            fi
+          else
+            if [[ "$GENERATED" == "true" ]]; then
+              gh release create "$TAG" "${assets[@]}" --verify-tag --title "Spinback $VERSION" \
+                  --generate-notes "${prerelease_flag[@]}"
+            else
+              gh release create "$TAG" "${assets[@]}" --verify-tag --title "Spinback $VERSION" \
+                  --notes-file body.md "${prerelease_flag[@]}"
+            fi
+          fi
+          gh release view "$TAG" --json url -q .url
