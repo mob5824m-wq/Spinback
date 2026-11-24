@@ -792,6 +792,7 @@ public final class PlaybackService extends Service {
     public int getPosition() {
         long now = SystemClock.elapsedRealtime();
         position.setPlaying(isPlaying(), now);
+        position.setBuffering(buffering, now);
         return position.update(nativePosition(), now, getDuration());
     }
 
@@ -806,10 +807,16 @@ public final class PlaybackService extends Service {
 
     public int getDuration() {
         try {
-            return player != null && prepared ? player.getDuration() : 0;
+            int duration = player != null && prepared ? player.getDuration() : 0;
+            if (duration > 0) {
+                return duration;
+            }
         } catch (Exception ignored) {
-            return 0;
         }
+        // Fall back to the catalogue's duration so the seek bar and the
+        // position clamp still work before the player knows the stream length.
+        MediaItem item = queue.current();
+        return item != null && item.durationSec > 0 ? (int) Math.min(Integer.MAX_VALUE, item.durationSec * 1000L) : 0;
     }
 
     public boolean isSeekable() {
@@ -1362,6 +1369,7 @@ public final class PlaybackService extends Service {
                 }
                 if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
                     buffering = true;
+                    position.setBuffering(true, SystemClock.elapsedRealtime());
                     updatePlaybackState();
                     updateNotification();
                     notifyChanged();
@@ -1369,6 +1377,7 @@ public final class PlaybackService extends Service {
                 }
                 if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END) {
                     buffering = false;
+                    position.setBuffering(false, SystemClock.elapsedRealtime());
                     updatePlaybackState();
                     updateNotification();
                     notifyChanged();
@@ -1382,6 +1391,7 @@ public final class PlaybackService extends Service {
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
                 if (player == mediaPlayer && request == generation && buffering && percent >= 100) {
                     buffering = false;
+                    position.setBuffering(false, SystemClock.elapsedRealtime());
                     updatePlaybackState();
                     updateNotification();
                     notifyChanged();
@@ -1406,6 +1416,7 @@ public final class PlaybackService extends Service {
             int nativePosition = nativePosition();
             position.anchor(nativePosition > 0 ? nativePosition
                     : position.update(-1, now, getDuration()), now);
+            position.setBuffering(false, now);
             position.setPlaying(true, now);
             acquireLocks();
             scrobbles.playbackStarted(queue.current());
@@ -1488,8 +1499,13 @@ public final class PlaybackService extends Service {
             try {
                 player.seekTo(0);
                 player.start();
-                position.seekTo(0, SystemClock.elapsedRealtime());
-                position.setPlaying(true, SystemClock.elapsedRealtime());
+                // Fresh track position: reset the tracker and seed it at zero
+                // (upstream resetPositionTracking(0, true)) so stale end-of-
+                // track samples cannot pollute the restarted timeline.
+                long now = SystemClock.elapsedRealtime();
+                position.reset();
+                position.anchor(0, now);
+                position.setPlaying(true, now);
                 endingHandled = false;
                 scrobbles.trackChanged(queue.current());
                 scrobbles.playbackStarted(queue.current());
@@ -1543,7 +1559,8 @@ public final class PlaybackService extends Service {
             return true;
         }
         long now = SystemClock.elapsedRealtime();
-        position.seekTo(0, now);
+        position.reset();
+        position.anchor(0, now);
         position.setPlaying(true, now);
         attachPlayerListeners(player, generation);
         applyEqualizerPreset();
@@ -1652,7 +1669,8 @@ public final class PlaybackService extends Service {
         }
         queue.playAt(queue.indexOf(nextItem));
         long now = SystemClock.elapsedRealtime();
-        position.seekTo(0, now);
+        position.reset();
+        position.anchor(0, now);
         position.setPlaying(true, now);
         attachPlayerListeners(incoming, generation);
         applyEqualizerPreset();

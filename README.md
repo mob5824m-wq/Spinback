@@ -56,6 +56,8 @@ behind one small interface, `MusicProvider`. The app implements that
 interface for its catalogue and extends `SoniqApp` + `MusicActivity` — the
 same split as the Soniq Base reference app, customized with light surfaces,
 Google Play Music-inspired orange accents and familiar navigation labels.
+The vendored playback position tracker includes the upstream seek and buffering
+fix from Soniq Base commit `8f272098`.
 
 ## Build
 
