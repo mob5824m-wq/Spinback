@@ -19,7 +19,8 @@ Options:
     --bump KIND    auto-compute the version from the latest ``vX.Y.Z`` tag
                    (``patch`` / ``minor`` / ``major``); the version argument
                    is then optional. With no tags yet, any bump starts at
-                   ``0.1.0`` (``major`` starts at ``1.0.0``).
+                   ``0.1.0`` (``major`` starts at ``1.0.0``). If there is
+                   exactly one prepared changelog release and no tags, tag it first.
     --notes TEXT   one bullet for the new section; repeatable. Defaults to the
                    entries collected under ``## [Unreleased]``.
     --date ISO     release date recorded in the changelog (default: today)
@@ -82,6 +83,15 @@ def bumped_version(kind):
     """Next version for a ``patch`` / ``minor`` / ``major`` bump from the latest tag."""
     latest = latest_version()
     if latest is None:
+        # A prepared first release may have been committed without its tag.
+        # Publish that section rather than trying to create an empty new one.
+        if os.path.exists(CHANGELOG):
+            with open(CHANGELOG, encoding="utf-8") as handle:
+                changelog = Changelog(handle.read())
+            versions = changelog.versions()
+            unreleased = changelog.section_body("unreleased") or ""
+            if len(versions) == 1 and SEMVER.fullmatch(versions[0]) and not unreleased.strip():
+                return versions[0]
         return "1.0.0" if kind == "major" else "0.1.0"
     major, minor, patch = (int(n) for n in latest.split("."))
     if kind == "major":

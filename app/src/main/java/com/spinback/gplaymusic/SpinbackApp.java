@@ -8,16 +8,13 @@ import com.soniq.base.ui.Theme;
  * Application entry point: wires the Google Play Music themed provider into
  * the Soniq Base framework and applies the Google Play Music palette.
  *
- * <p>Google Play Music (2011–2020) used Google's signature orange. The
- * framework's UI is dark, so this app keeps the dark surfaces and rebrands
- * the accent to that orange — the most recognisable part of the original
- * identity — rather than forking the framework's light theme. See
- * {@code docs/GOOGLE-PLAY-MUSIC.md} for the full theme mapping.
+ * <p>Uses warm light surfaces and an orange accent inspired by the original
+ * Google Play Music redesign. The catalogue remains YouTube Music.
  */
 public final class SpinbackApp extends SoniqApp {
 
     /** Google Play Music orange (2016–2020 identity). */
-    public static final int GPLAY_ORANGE = 0xFFFF5722;
+    public static final int GPLAY_ORANGE = 0xFFBF360C;
     /** Warm amber companion from the same orange family. */
     public static final int GPLAY_AMBER = 0xFFFF9800;
 
@@ -27,6 +24,18 @@ public final class SpinbackApp extends SoniqApp {
         // Must run before any view is built; views read Theme fields when
         // they are constructed.
         Theme.customize(GPLAY_ORANGE, GPLAY_AMBER);
+        Theme.BG = 0xFFF5F5F5;
+        Theme.SURFACE = 0xFFFFFFFF;
+        Theme.SURFACE_HIGH = 0xFFF0EFED;
+        Theme.OUTLINE = 0xFFD8D6D3;
+        Theme.TEXT = 0xFF212121;
+        Theme.TEXT_DIM = 0xFF5F5F5F;
+        Theme.TEXT_FAINT = 0xFF707070;
+        Theme.LIGHT_SYSTEM_BARS = true;
+        Theme.HOME_LABEL = "Listen Now";
+        Theme.HOME_TITLE = "Listen Now";
+        Theme.SEARCH_LABEL = "Explore";
+        Theme.LIBRARY_LABEL = "My Music";
     }
 
     @Override

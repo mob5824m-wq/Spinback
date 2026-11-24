@@ -43,7 +43,7 @@ public final class BottomNav extends LinearLayout {
             item.setClickable(true);
             item.setFocusable(true);
             item.setMinimumHeight(Ui.dp(context, 48));
-            item.setContentDescription(tab.label);
+            item.setContentDescription(tab.displayLabel());
 
             FrameLayout iconWrap = new FrameLayout(context);
             iconWrap.setLayoutParams(new FrameLayout.LayoutParams(
@@ -56,7 +56,7 @@ public final class BottomNav extends LinearLayout {
             iconWrap.addView(icon);
             item.addView(iconWrap);
 
-            TextView label = Ui.text(context, tab.label, 10f, Theme.TEXT_DIM, false);
+            TextView label = Ui.text(context, tab.displayLabel(), 10f, Theme.TEXT_DIM, false);
             label.setGravity(Gravity.CENTER);
             label.setPadding(0, Ui.dp(context, 2), 0, 0);
             item.addView(label);

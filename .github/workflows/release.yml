@@ -19,12 +19,21 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      tag:
+        description: "Existing tag to publish or retry (e.g. v1.0.0); leave empty to bump"
+        type: string
+        required: false
       bump:
         description: "Auto-bump from the latest tag"
         type: choice
         required: true
         default: patch
         options: [patch, minor, major]
+
+# Avoid racing version/tag creation across simultaneous release runs.
+concurrency:
+  group: spinback-release
+  cancel-in-progress: false
 
 permissions:
   contents: write   # push the release commit + tag, create the GitHub Release
@@ -66,14 +75,26 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
           DISPATCH_BUMP: ${{ inputs.bump }}
+          DISPATCH_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [[ "$REF_TYPE" == "tag" ]]; then
+          tag=""
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$DISPATCH_TAG" ]]; then
+            tag="$DISPATCH_TAG"
+          elif [[ "$REF_TYPE" == "tag" ]]; then
             tag="$REF_NAME"
+          fi
+          if [[ -n "$tag" ]]; then
             if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
               echo "::error title=Invalid tag::'$tag' is not vX.Y.Z (an optional -suffix is allowed); nothing was published."
               exit 1
             fi
+            # Manual retries must build the tagged commit, not the dispatch branch.
+            git rev-parse --verify --quiet "refs/tags/$tag^{commit}" >/dev/null || {
+              echo "::error::Tag '$tag' was not found."
+              exit 1
+            }
+            git checkout --detach "refs/tags/$tag"
             echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
             echo "tag=$tag" >> "$GITHUB_OUTPUT"
             if [[ "$tag" == v*-* ]]; then echo "prerelease=true" >> "$GITHUB_OUTPUT"
@@ -121,6 +142,27 @@ jobs:
             exit 1
           fi
 
+      - name: Verify and stage APK
+        id: apk
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/apk/release/app-release.apk"
+          test -f "$apk" || { echo "::error::Release APK not found: $apk"; exit 1; }
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          mkdir -p release-assets
+          named="spinback-google-play-music-${VERSION}-release.apk"
+          cp "$apk" "release-assets/$named"
+          echo "path=release-assets/$named" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK to workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: spinback-release-${{ steps.version.outputs.version }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
       - name: Release notes
         id: notes
         env:
@@ -152,6 +194,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
           GENERATED: ${{ steps.notes.outputs.generated }}
+          APK: ${{ steps.apk.outputs.path }}
         run: |
           # AGP puts the AAR under build/outputs/aar but the sources JAR elsewhere
           # under build/, so search the whole build directory. Rename the APK to
@@ -159,14 +202,7 @@ jobs:
           assets=()
           while IFS= read -r file; do assets+=("$file"); done < <(
             find soniq-base/build \( -name '*.aar' -o -name '*sources*.jar' \))
-          apk="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
-          if [[ -z "$apk" ]]; then
-            echo "::error title=No APK::No release APK under app/build/outputs/apk/release."
-            exit 1
-          fi
-          named="spinback-google-play-music-${VERSION}-release.apk"
-          cp "$apk" "$named"
-          assets+=("$named")
+          assets+=("$APK")
           echo "assets: ${assets[*]}"
           if [[ " ${assets[*]} " != *sources* ]]; then
             echo "::warning::No sources JAR found under soniq-base/build; the GitHub Release will lack it."
@@ -174,7 +210,16 @@ jobs:
           prerelease_flag=(); [[ "$PRERELEASE" == "true" ]] && prerelease_flag=(--prerelease)
           if gh release view "$TAG" >/dev/null 2>&1; then
             # Release drafted in the GitHub UI (which pushed the tag): add the assets.
-            gh release upload "$TAG" "${assets[@]}" --clobber
+            # Do not replace published APKs: a fresh runner generates a new
+            # debug signing key, so overwriting would change the install identity.
+            existing="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+            for asset in "${assets[@]}"; do
+              if grep -Fxq "$(basename "$asset")" <<< "$existing"; then
+                echo "Keeping existing asset: $(basename "$asset")"
+              else
+                gh release upload "$TAG" "$asset"
+              fi
+            done
             if [[ -z "$(gh release view "$TAG" --json body -q .body | tr -d '[:space:]')" ]]; then
               if [[ "$GENERATED" == "true" ]]; then
                 gh release edit "$TAG" --generate-notes

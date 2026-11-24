@@ -25,4 +25,4 @@ This is the framework-wide carry-forward list distilled from the Kobo Arc 7 Free
 
 ## Framework boundary
 
-These are shared expectations for music apps built on Soniq Base. Catalogue search/browse, stream resolution, provider-specific collection semantics, and deep-link parsing remain the `MusicProvider`/host app's responsibility. The framework provides generic behavior and must not assume YouTube, a provider account, cloud library sync, DRM bypass, or a particular remote catalogue. See the [framework feature overview](../README.md#what-the-framework-gives-you) and [porting notes](PORTING.md).
+These are shared expectations for music apps built on Soniq Base. Catalogue search/browse, stream resolution, provider-specific collection semantics, and deep-link parsing remain the `MusicProvider`/host app's responsibility. You may make a white version of this framework, app is just to build off of. The framework provides generic behavior and must not assume YouTube, a provider account, cloud library sync, DRM bypass, or a particular remote catalogue. See the [framework feature overview](../README.md#what-the-framework-gives-you) and [porting notes](PORTING.md).

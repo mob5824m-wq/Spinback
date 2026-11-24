@@ -4,6 +4,7 @@ plugins {
 
 // Same tag-derived version as the library (see the root build script).
 val soniqVersion: String = rootProject.extra["soniqVersion"] as String
+version = soniqVersion
 
 /** `1.2.3` → 1002003; base-1000 minor/patch slots avoid common SemVer collisions. */
 fun versionCodeOf(version: String): Int {

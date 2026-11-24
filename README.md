@@ -24,10 +24,10 @@ modern Android app (API 26+, zero runtime dependencies).
 
 ## What you get
 
-- **Home (Listen Now)** — quick actions, Quick picks, Recently played,
+- **Listen Now** — quick actions, Quick picks, Recently played,
   Continue listening.
-- **Search (Explore)** — songs, artists, albums, playlists with history.
-- **Library (My Music)** — liked songs, saved artists/albums, local
+- **Explore** — songs, artists, albums, playlists with history.
+- **My Music** — liked songs, saved artists/albums, local
   playlists, downloads. All on-device; no account, no cloud.
 - **Full player** — artwork, scrubber, synced lyrics (tap a line to seek),
   like, download, queue, radio; shuffle/repeat; up-next sheet.
@@ -54,8 +54,10 @@ The framework (`:soniq-base`, vendored from Soniq Base Android, MIT) ships
 playback, queue, library, downloads, lyrics, scrobbling and the complete UI
 behind one small interface, `MusicProvider`. The app implements that
 interface for its catalogue and extends `SoniqApp` + `MusicActivity` — the
-same split as the Soniq Base reference app, re-themed to Google Play Music
-orange (`Theme.customize(0xFFFF5722, 0xFFFF9800)`).
+same split as the Soniq Base reference app, customized with light surfaces,
+Google Play Music-inspired orange accents and familiar navigation labels.
+The vendored playback position tracker includes the upstream seek and buffering
+fix from Soniq Base commit `8f272098`.
 
 ## Build
 
@@ -101,7 +103,17 @@ Or without a local checkout: **Actions → Release → Run workflow** and pick
 `patch` / `minor` / `major` — the workflow bumps, tags, builds and publishes
 the APK for you. Pushing to `main` with `[release]` in the commit message
 (`[release:minor]` / `[release:major]` for a bigger bump) does the same
-automatically; ordinary commits never cut a version.
+automatically; ordinary commits never cut a version. To recover a failed
+release without creating a new version, run the workflow and enter its existing
+`vX.Y.Z` tag in the optional **tag** field; the tagged commit is checked out
+and the bump choice is ignored. The signed APK is also retained as a workflow
+artifact, even if publishing the GitHub Release fails.
+
+The release APK uses a debug key generated on each CI runner. Separate releases
+may therefore have different signing keys: Android may require uninstalling the
+old app (and its local data) before installing a newer APK. This is not a stable
+production signing setup; use a persistent, securely managed release key for
+in-place upgrades.
 
 Add entries under `## [Unreleased]` in `CHANGELOG.md` as you go (or pass
 `--notes "…"`); the script moves them into the new version's section and the

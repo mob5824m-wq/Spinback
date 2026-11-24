@@ -55,7 +55,7 @@ public final class SearchScreen extends Screen {
 
     @Override
     protected void build(LinearLayout container) {
-        container.addView(Ui.text(host.context(), "Search", 28f, Theme.TEXT, true));
+        container.addView(Ui.text(host.context(), Theme.SEARCH_LABEL, 28f, Theme.TEXT, true));
         container.addView(Ui.text(host.context(),
                 "Search " + host.provider().displayName(), 12f, Theme.TEXT_DIM, false));
 

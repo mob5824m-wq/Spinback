@@ -12,6 +12,15 @@ public enum Tab {
     public final String label;
     public final int icon;
 
+    public String displayLabel() {
+        switch (this) {
+            case HOME: return Theme.HOME_LABEL;
+            case SEARCH: return Theme.SEARCH_LABEL;
+            case LIBRARY: return Theme.LIBRARY_LABEL;
+            default: return label;
+        }
+    }
+
     Tab(String label, int icon) {
         this.label = label;
         this.icon = icon;

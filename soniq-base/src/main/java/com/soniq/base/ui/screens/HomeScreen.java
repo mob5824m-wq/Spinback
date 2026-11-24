@@ -35,7 +35,7 @@ public final class HomeScreen extends Screen {
 
     @Override
     protected void build(LinearLayout container) {
-        container.addView(Ui.text(host.context(), greeting(), 28f, Theme.TEXT, true));
+        container.addView(Ui.text(host.context(), Theme.HOME_TITLE != null ? Theme.HOME_TITLE : greeting(), 28f, Theme.TEXT, true));
         String tagline = host.provider().tagline();
         container.addView(Ui.text(host.context(),
                 tagline.length() > 0 ? tagline : host.provider().displayName(),
@@ -85,7 +85,7 @@ public final class HomeScreen extends Screen {
                 host.openInsights();
             }
         }), chipParams());
-        chipRow.addView(new Chip(host.context(), "Library", new Runnable() {
+        chipRow.addView(new Chip(host.context(), Theme.LIBRARY_LABEL, new Runnable() {
             @Override
             public void run() {
                 host.openLibrary();
