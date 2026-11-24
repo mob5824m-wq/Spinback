@@ -57,13 +57,6 @@ interface for its catalogue and extends `SoniqApp` + `MusicActivity` — the
 same split as the Soniq Base reference app, re-themed to Google Play Music
 orange (`Theme.customize(0xFFFF5722, 0xFFFF9800)`).
 
-**Catalogue honesty:** there is no Google Play Music API left to call. The
-provider talks to YouTube Music's public, unauthenticated InnerTube
-endpoints (the successor service Google migrated users to). No sign-in, no
-cookies, no bypass of age/member/region restrictions — refusals are shown as
-text. ListenBrainz scrobbles report `music.youtube.com` as the origin, never
-a fictional Google Play Music origin.
-
 ## Build
 
 ```bash
