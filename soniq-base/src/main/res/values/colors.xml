@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="soniq_background">#FF0B0B0F</color>
+    <color name="soniq_surface">#FF15151B</color>
+    <color name="soniq_surface_high">#FF1E1E26</color>
+    <color name="soniq_outline">#FF2C2C36</color>
+    <color name="soniq_accent">#FFFF3B5C</color>
+    <color name="soniq_accent_soft">#33FF3B5C</color>
+    <color name="soniq_secondary">#FF7C5CFF</color>
+    <color name="soniq_text_primary">#FFF5F5F7</color>
+    <color name="soniq_text_secondary">#FF9A9AA6</color>
+</resources>

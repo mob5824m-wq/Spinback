@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Permissions, PlaybackService, MediaButtonReceiver and the default widget
+      come from :soniq-base. The app still declares the Android Auto browse
+      service itself, because the browse metadata is app-level (see
+      docs/WIDGETS.md in the Soniq Base repository).
+    -->
+
+    <application
+        android:name=".SpinbackApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SoniqBase"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="keyboardHidden|orientation|screenLayout|screenSize|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Open music.youtube.com / youtu.be links directly in this app.
+                 The catalogue is YouTube Music (Google Play Music's successor);
+                 see GooglePlayMusicProvider. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="music.youtube.com" />
+                <data android:host="www.youtube.com" />
+                <data android:host="m.youtube.com" />
+                <data android:host="youtu.be" />
+                <data android:pathPrefix="/watch" />
+                <data android:pathPrefix="/playlist" />
+            </intent-filter>
+        </activity>
+
+        <!-- Android Auto / Automotive: browse the local library in the car. -->
+        <service
+            android:name="com.soniq.base.playback.SoniqMediaBrowserService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.media.browse.MediaBrowserService"
+                android:resource="@xml/automotive_app_desc" />
+        </service>
+    </application>
+
+</manifest>
