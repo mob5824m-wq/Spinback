@@ -13,8 +13,9 @@ fun versionCodeOf(version: String): Int {
     require(parts[0] <= 2100L && parts[1] < 1000L && parts[2] < 1000L) {
         "SemVer components exceed Android versionCode encoding limits"
     }
-    val code = parts[0] * 1_000_000L + parts[1] * 1_000L + parts[2]
-    require(code in 1L..2_100_000_000L) { "SemVer version is outside Android versionCode range" }
+    // Unreleased checkouts use 0.0.0-SNAPSHOT; Android needs versionCode >= 1.
+    val code = (parts[0] * 1_000_000L + parts[1] * 1_000L + parts[2]).coerceAtLeast(1L)
+    require(code <= 2_100_000_000L) { "SemVer version is outside Android versionCode range" }
     return code.toInt()
 }
 
