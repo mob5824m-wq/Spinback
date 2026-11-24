@@ -7,6 +7,8 @@ All notable changes to Spinback are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-24
+
 - Initial release: Google Play Music themed revival on Soniq Base Android.
   Vendored `:soniq-base` framework (playback, queue, library, downloads,
   lyrics, ListenBrainz scrobbling, widget, Android Auto, crossfade/gapless,
@@ -19,3 +21,6 @@ All notable changes to Spinback are documented here. The format follows
   releases with the versioned APK attached, plus auto version bumping via
   Actions → Release → Run workflow or a `[release]` commit message on `main`.
   `scripts/release.py` gained `--bump patch|minor|major`.
+
+[unreleased]: https://github.com/mob5824m-wq/Spinback/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/mob5824m-wq/Spinback/releases/tag/v1.0.0
