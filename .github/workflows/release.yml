@@ -127,7 +127,8 @@ jobs:
       - name: Build app and library, run unit tests
         run: |
           set -o pipefail
-          ./gradlew :soniq-base:assembleRelease :soniq-base:releaseSourcesJar \
+          # AGP names the sources task sourceReleaseJar (source + variant + Jar).
+          ./gradlew :soniq-base:assembleRelease :soniq-base:sourceReleaseJar \
               :app:assembleRelease :soniq-base:testDebugUnitTest \
               --no-daemon --stacktrace 2>&1 | tee build.log
 
