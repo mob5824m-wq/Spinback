@@ -46,10 +46,10 @@ change.
 
 | Google Play Music (2011–2020) | This app |
 |---|---|
-| Orange identity (`#FF5722` family), headphones mark | Same orange accent (`Theme.customize(0xFFFF5722, 0xFFFF9800)` in `SpinbackApp`), original white-headphones-on-orange adaptive icon |
-| **Listen Now** (Home) | **Home** tab: greeting, tagline, quick actions, Quick picks, Recently played, Continue listening |
-| **My Music** / library | **Library** tab: Liked songs, saved artists/albums, local playlists, downloads, recent — all on-device, no account |
-| **Explore** / search | **Search** tab with Songs / Artists / Albums / Playlists filters and search history |
+| Orange identity (`#FF5722` family), headphones mark | Accessible deep-orange accent (`#BF360C`) in `SpinbackApp`, original white-headphones-on-orange adaptive icon |
+| **Listen Now** (Home) | **Listen Now** tab: tagline, quick actions, Quick picks, Recently played, Continue listening |
+| **My Music** / library | **My Music** tab: Liked songs, saved artists/albums, local playlists, downloads, recent — all on-device, no account |
+| **Explore** / search | **Explore** tab with Songs / Artists / Albums / Playlists filters and search history |
 | Curated **radio** by mood/activity | **Start radio** from any track (provider `radio()`), plus queue shuffle/repeat |
 | Offline playback, downloads | **Downloads** to `Music/Google Play Music` via MediaStore, offline index, Wi-Fi-only gate |
 | Full player, queue, lyrics | Framework player sheet: artwork, scrubber, synced lyrics (tap-to-seek), like/download/queue/radio, up-next queue |
@@ -58,7 +58,7 @@ change.
 | All Access (40M songs, no ads, unlimited skips) | **Not replicated.** No subscription, no catalogue-size claim. Skips are unlimited because there is no ad tier, not because of a paid plan |
 | Podcasts (2016) | **Not replicated.** The framework is music-only |
 | Store purchases, 5 phones / 10 devices | **Not replicated.** Local-first: no account, no cloud sync, no device limits to claim |
-| Light Material theme (2016 redesign) | Dark framework UI with the orange accent. The framework is dark-only; forking a light theme would mean forking the framework, so the revival keeps dark surfaces and the recognisable orange |
+| Light Material theme (2016 redesign) | Light backgrounds and dark text, with orange controls and a light native-dialog theme. This is a tribute rather than a pixel-identical copy |
 
 ## What the framework gives this app (for free)
 
@@ -87,7 +87,7 @@ Base) for the framework contract.
 ```
 soniq-base/   Vendored Soniq Base framework (MIT). Provider-agnostic.
 app/          Google Play Music themed app (com.spinback.gplaymusic).
-  SpinbackApp.java              SoniqApp + orange Theme.customize
+  SpinbackApp.java              SoniqApp + light palette and navigation labels
   GooglePlayMusicProvider.java  MusicProvider SPI → YouTubeMusicApi
   YouTubeMusicApi.java          Search / browse / resolve (successor catalogue)
   InnerTubeClient.java          Public InnerTube HTTP client

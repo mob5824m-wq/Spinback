@@ -26,6 +26,13 @@ public final class Theme {
     public static int TEXT_DIM = 0xFF9A9AA6;
     public static int TEXT_FAINT = 0xFF6E6E7A;
 
+    /** Optional presentation overrides set before constructing the UI. */
+    public static boolean LIGHT_SYSTEM_BARS = false;
+    public static String HOME_LABEL = "Home";
+    public static String SEARCH_LABEL = "Search";
+    public static String LIBRARY_LABEL = "Library";
+    public static String HOME_TITLE = null;
+
     private Theme() {
     }
 
@@ -43,6 +50,11 @@ public final class Theme {
 
     /** Restores the default dark palette. */
     public static void reset() {
+        BG = 0xFF0B0B0F; SURFACE = 0xFF15151B; SURFACE_HIGH = 0xFF1E1E26;
+        OUTLINE = 0xFF2C2C36; TEXT = 0xFFF5F5F7; TEXT_DIM = 0xFF9A9AA6;
+        TEXT_FAINT = 0xFF6E6E7A; LIGHT_SYSTEM_BARS = false;
+        HOME_LABEL = "Home"; SEARCH_LABEL = "Search"; LIBRARY_LABEL = "Library";
+        HOME_TITLE = null;
         customize(DEFAULT_ACCENT, DEFAULT_SECONDARY);
     }
 

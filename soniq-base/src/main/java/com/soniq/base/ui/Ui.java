@@ -39,7 +39,7 @@ public final class Ui {
     public static RippleDrawable ripple(Context context, int color, float radiusDp) {
         GradientDrawable content = rounded(context, color, radiusDp);
         GradientDrawable mask = rounded(context, 0xFFFFFFFF, radiusDp);
-        return new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), content, mask);
+        return new RippleDrawable(ColorStateList.valueOf(Theme.LIGHT_SYSTEM_BARS ? 0x22000000 : 0x33FFFFFF), content, mask);
     }
 
     public static TextView text(Context context, CharSequence value, float sp, int color,

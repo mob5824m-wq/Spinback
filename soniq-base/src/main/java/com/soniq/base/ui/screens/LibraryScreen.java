@@ -45,7 +45,7 @@ public final class LibraryScreen extends Screen {
             buildPlaylist(container);
             return;
         }
-        container.addView(Ui.text(host.context(), "Library", 28f, Theme.TEXT, true));
+        container.addView(Ui.text(host.context(), Theme.LIBRARY_LABEL, 28f, Theme.TEXT, true));
         container.addView(Ui.text(host.context(),
                 "Local only · no account · no sync", 12f, Theme.TEXT_DIM, false));
 

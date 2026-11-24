@@ -38,6 +38,9 @@ jobs:
           ./gradlew :soniq-base:assembleDebug :app:assembleDebug \
               :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
 
+      - name: Test release automation
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Run JVM unit tests
         run: |
           set -o pipefail

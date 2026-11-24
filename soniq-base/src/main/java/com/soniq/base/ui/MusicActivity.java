@@ -295,7 +295,9 @@ public class MusicActivity extends android.app.Activity implements Host {
             getWindow().setDecorFitsSystemWindows(false);
             WindowInsetsController controller = getWindow().getInsetsController();
             if (controller != null) {
-                controller.setSystemBarsAppearance(0,
+                controller.setSystemBarsAppearance(Theme.LIGHT_SYSTEM_BARS
+                                ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                                    | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS : 0,
                         WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
                                 | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
             }
@@ -304,7 +306,10 @@ public class MusicActivity extends android.app.Activity implements Host {
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | (Theme.LIGHT_SYSTEM_BARS
+                                ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                                    | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0));
         }
     }
 

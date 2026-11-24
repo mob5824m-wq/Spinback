@@ -24,10 +24,10 @@ modern Android app (API 26+, zero runtime dependencies).
 
 ## What you get
 
-- **Home (Listen Now)** — quick actions, Quick picks, Recently played,
+- **Listen Now** — quick actions, Quick picks, Recently played,
   Continue listening.
-- **Search (Explore)** — songs, artists, albums, playlists with history.
-- **Library (My Music)** — liked songs, saved artists/albums, local
+- **Explore** — songs, artists, albums, playlists with history.
+- **My Music** — liked songs, saved artists/albums, local
   playlists, downloads. All on-device; no account, no cloud.
 - **Full player** — artwork, scrubber, synced lyrics (tap a line to seek),
   like, download, queue, radio; shuffle/repeat; up-next sheet.
@@ -54,8 +54,8 @@ The framework (`:soniq-base`, vendored from Soniq Base Android, MIT) ships
 playback, queue, library, downloads, lyrics, scrobbling and the complete UI
 behind one small interface, `MusicProvider`. The app implements that
 interface for its catalogue and extends `SoniqApp` + `MusicActivity` — the
-same split as the Soniq Base reference app, re-themed to Google Play Music
-orange (`Theme.customize(0xFFFF5722, 0xFFFF9800)`).
+same split as the Soniq Base reference app, customized with light surfaces,
+Google Play Music-inspired orange accents and familiar navigation labels.
 
 ## Build
 
