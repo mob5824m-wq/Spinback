@@ -103,7 +103,17 @@ Or without a local checkout: **Actions → Release → Run workflow** and pick
 `patch` / `minor` / `major` — the workflow bumps, tags, builds and publishes
 the APK for you. Pushing to `main` with `[release]` in the commit message
 (`[release:minor]` / `[release:major]` for a bigger bump) does the same
-automatically; ordinary commits never cut a version.
+automatically; ordinary commits never cut a version. To recover a failed
+release without creating a new version, run the workflow and enter its existing
+`vX.Y.Z` tag in the optional **tag** field; the tagged commit is checked out
+and the bump choice is ignored. The signed APK is also retained as a workflow
+artifact, even if publishing the GitHub Release fails.
+
+The release APK uses a debug key generated on each CI runner. Separate releases
+may therefore have different signing keys: Android may require uninstalling the
+old app (and its local data) before installing a newer APK. This is not a stable
+production signing setup; use a persistent, securely managed release key for
+in-place upgrades.
 
 Add entries under `## [Unreleased]` in `CHANGELOG.md` as you go (or pass
 `--notes "…"`); the script moves them into the new version's section and the
