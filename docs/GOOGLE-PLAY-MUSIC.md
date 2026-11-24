@@ -51,7 +51,6 @@ change.
 | Offline playback, downloads | **Downloads** to `Music/Google Play Music` via MediaStore, offline index, Wi-Fi-only gate |
 | Full player, queue, lyrics | Framework player sheet: artwork, scrubber, synced lyrics (tap-to-seek), like/download/queue/radio, up-next queue |
 | Web player, Android TV, Wear OS | Android app + **Android Auto** browse (`SoniqMediaBrowserService`) + home-screen **widget**. No web/TV/Wear clients — not claimed |
-| 50,000-song free locker, file matching, 320 kbps | **Not replicated.** No locker, no upload, no matching. Stream quality is a target bitrate setting; the actual stream is whatever the successor catalogue returns |
 | All Access (40M songs, no ads, unlimited skips) | **Not replicated.** No subscription, no catalogue-size claim. Skips are unlimited because there is no ad tier, not because of a paid plan |
 | Podcasts (2016) | **Not replicated.** The framework is music-only |
 | Store purchases, 5 phones / 10 devices | **Not replicated.** Local-first: no account, no cloud sync, no device limits to claim |
