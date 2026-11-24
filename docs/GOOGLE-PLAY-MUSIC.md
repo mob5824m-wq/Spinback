@@ -34,9 +34,6 @@ app, re-themed. Consequences, stated plainly:
 - **Honest scrobbling.** `musicService()` returns `music.youtube.com` and
   `originUrl()` returns the YouTube watch URL, so ListenBrainz listens never
   claim a Google Play Music origin.
-- **Dead links stay dead.** `play.google.com/music/…` links are not handled:
-  their ids cannot be resolved by any live catalogue. The app handles
-  `music.youtube.com` / `youtu.be` links instead (see `MainActivity`).
 
 Swapping the catalogue later means writing one new `MusicProvider` — the
 framework, UI, playback, library, downloads, lyrics, and scrobbling do not
