@@ -7,6 +7,17 @@ All notable changes to Spinback are documented here. The format follows
 
 ## [Unreleased]
 
+- Fixed the Release workflow failing on `error: nothing under [Unreleased] and
+  no --notes` when **Actions → Release → Run workflow** was used with an empty
+  `[Unreleased]` section: auto-bumps now fall back to the commit subjects since
+  the last release tag (`scripts/release.py --from-commits`), so a bump never
+  needs a hand-written changelog entry. Hand-written entries still win.
+- Auto-bump releases now build and test **before** publishing: `--prepare`
+  writes the section and creates the tag locally, and `--publish-prepared`
+  pushes the `Release X.Y.Z` commit and tag only after Gradle and the unit tests
+  pass. A broken build no longer leaves a tag or a half-cut release behind.
+  `scripts/release.py` gained tests for both paths.
+
 ## [1.0.0] - 2026-11-24
 
 - Initial release: Google Play Music themed revival on Soniq Base Android.

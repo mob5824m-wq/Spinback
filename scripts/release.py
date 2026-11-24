@@ -23,6 +23,16 @@ Options:
                    exactly one prepared changelog release and no tags, tag it first.
     --notes TEXT   one bullet for the new section; repeatable. Defaults to the
                    entries collected under ``## [Unreleased]``.
+    --from-commits fall back to the subjects of the commits since the last
+                   release tag when ``[Unreleased]`` and ``--notes`` are empty,
+                   so an unattended bump never fails on a missing changelog entry.
+    --prepare      CI entry point: write the new changelog section, commit it and
+                   create the tag *locally* (so ``git describe`` derives the
+                   version during the build), then print ``version=`` / ``tag=`` /
+                   ``prerelease=`` for the workflow. Nothing is pushed.
+    --publish-prepared
+                   CI entry point, run after the build and tests pass: push the
+                   commit and tag created by ``--prepare``.
     --date ISO     release date recorded in the changelog (default: today)
 
 Exit codes: 0 ok; 1 invalid arguments or state; 3 from ``--print-body`` when the
@@ -42,6 +52,7 @@ CHANGELOG = os.path.join(ROOT, "CHANGELOG.md")
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 SECTION = re.compile(r"^## \[([^\]]+)\][^\n]*$", re.M)
 LINK_REF = re.compile(r"^\[([^\]]+)\]:\s+(\S+)[^\n]*$", re.M)
+MAX_COMMIT_NOTES = 30
 
 
 def die(message, code=1):
@@ -56,10 +67,17 @@ def git(*args, check=True):
     return result.stdout.strip()
 
 
-def has_tag(tag):
-    if git("tag", "-l", tag):
+def tag_exists(tag, local=True, remote=True):
+    """Whether ``tag`` exists locally and/or on origin."""
+    if local and git("tag", "-l", tag):
         return True
-    return bool(git("ls-remote", "--tags", "origin", "refs/tags/" + tag, check=False))
+    if remote and git("ls-remote", "--tags", "origin", "refs/tags/" + tag, check=False):
+        return True
+    return False
+
+
+def has_tag(tag):
+    return tag_exists(tag)
 
 
 def repo_slug():
@@ -73,7 +91,14 @@ def latest_version():
     """Newest ``vX.Y.Z`` tag (without the ``v``), or None when there are none."""
     tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", check=False)
     if not tag:
-        return None
+        # describe() only sees tags reachable from HEAD, which a shallow or
+        # partial clone can lack. Fall back to the newest tag by version so a
+        # bump never restarts the version line from scratch.
+        tag = next((t for t in git("tag", "--list", "--sort=-v:refname",
+                                   "--format=%(refname:short)", "v[0-9]*",
+                                   check=False).split() if SEMVER.match(t[1:])), "")
+        if not tag:
+            return None
     version = tag[1:] if tag.startswith("v") else tag
     # A pre-release tag (v1.2.3-rc.1) still counts as the latest release line.
     return version.split("-")[0] if SEMVER.match(version) else None
@@ -99,6 +124,56 @@ def bumped_version(kind):
     if kind == "minor":
         return "%d.%d.0" % (major, minor + 1)
     return "%d.%d.%d" % (major, minor, patch + 1)
+
+
+def version_tuple(version):
+    """Comparable ``(major, minor, patch)`` for a ``X.Y.Z`` string (suffix ignored)."""
+    return tuple(int(n) for n in version.split("-")[0].split(".")[:3])
+
+
+def release_range(version):
+    """Git range holding the commits a ``version`` release ships.
+
+    ``v<previous>..HEAD`` when a release tag exists, else ``HEAD`` — i.e. every
+    commit, which is what a prepared first release publishes.
+    """
+    latest = latest_version()
+    if latest is None or version_tuple(version) <= version_tuple(latest):
+        return ["HEAD"]
+    return ["v%s..HEAD" % latest]
+
+
+def commits_since_release(version):
+    """One-line description of every change a ``version`` release ships.
+
+    Subjects only, with merge commits dropped (the branch commits they bring in
+    are already listed) and release-plumbing commits skipped, oldest first.
+    """
+    log = git("log", "--no-merges", "--reverse", "--pretty=%s", *release_range(version),
+              check=False)
+    # --no-merges already drops merge commits; skip them again for histories
+    # rewritten or squashed in ways git no longer reports as merges, plus the
+    # release plumbing this script and the workflow create.
+    skip = re.compile(
+        r"^(Merge\s+(pull request|branch|remote-tracking)|Release\s+\d+\.\d+\.\d+|"
+        r"Auto-?bump\b|Bump version\b)", re.I)
+    subjects = []
+    for line in log.splitlines():
+        subject = line.strip()
+        if not subject or skip.match(subject) or subject in subjects:
+            continue
+        subjects.append(subject)
+    return subjects
+
+
+def note_bullets(subjects):
+    """Changelog bullets for commit subjects, capped so CI does not write novels."""
+    if len(subjects) > MAX_COMMIT_NOTES:
+        subjects = subjects[:MAX_COMMIT_NOTES] + [
+            "…and %d more change(s); see the commit history." % (
+                len(subjects) - MAX_COMMIT_NOTES)]
+    return [subject if subject[:2] in ("- ", "* ") else "- " + subject[0].upper() + subject[1:]
+            for subject in subjects]
 
 
 class Changelog:
@@ -239,6 +314,41 @@ def urls(tag, slug):
     print("  Release:  https://github.com/%s/releases/tag/%s  (once CI finishes)" % (slug, tag))
 
 
+def print_prepare(version, tag):
+    """Print the values the Release workflow reads from ``--prepare``."""
+    print("version=%s" % version)
+    print("tag=%s" % tag)
+    print("prerelease=%s" % ("true" if "-" in version else "false"))
+
+
+def prepublish(version, tag):
+    """Commit the prepared CHANGELOG section and tag it locally — no push.
+
+    The Release workflow runs this before the build so the modules derive
+    ``version`` from the tag (``git describe --exact-match``), then keeps the
+    tag and commit local: nothing is visible on the remote until
+    ``publish_prepared`` succeeds after the build and tests pass.
+    """
+    if not git("status", "--porcelain", check=False):
+        # The section was already committed on main: tag the commit as it is.
+        print("CHANGELOG.md already carried [%s]; tagging the current commit." % version)
+    else:
+        git("add", "CHANGELOG.md")
+        git("commit", "--quiet", "-m", "Release %s" % version)
+    git("tag", "-a", tag, "-m", "Spinback %s" % version)
+    print("Tagged %s locally; publish after the build." % tag)
+
+
+def publish_prepared(version, tag):
+    """Push the commit and tag created by ``prepublish`` — called after the build."""
+    if tag_exists(tag, local=False):
+        die("tag %s is already on origin; nothing to publish (the release is done)."
+            % tag)
+    git("push", "--quiet", "origin", "HEAD:refs/heads/main")
+    git("push", "--quiet", "origin", "refs/tags/%s" % tag)
+    print("Pushed the release commit and %s; publishing the release." % tag)
+
+
 def open_release_pr(version, branch, body):
     try:
         result = subprocess.run(
@@ -270,6 +380,15 @@ def main():
                         help="only tag main (after a release PR was merged)")
     parser.add_argument("--print-body", action="store_true",
                         help="print the GitHub Release body and exit (used by CI)")
+    parser.add_argument("--from-commits", action="store_true",
+                        help="use the commits since the last release tag as notes when "
+                             "[Unreleased] and --notes are empty (used by CI)")
+    parser.add_argument("--prepare", action="store_true",
+                        help="write the new changelog section and print version/tag for "
+                             "CI, without committing, tagging or pushing")
+    parser.add_argument("--publish-prepared", action="store_true",
+                        help="commit, tag and push a section written by --prepare (CI, "
+                             "after the build passes)")
     parser.add_argument("--notes", action="append", default=[], metavar="TEXT",
                         help="bullet for the new section; repeatable")
     parser.add_argument("--date", help="release date for the changelog (default: today)")
@@ -293,6 +412,11 @@ def main():
     date = args.date or datetime.date.today().isoformat()
     slug = repo_slug()
 
+    if args.publish_prepared:
+        publish_prepared(version, tag)
+        urls(tag, slug)
+        return
+
     if not os.path.exists(CHANGELOG):
         die("CHANGELOG.md not found next to the repository root.")
     original = open(CHANGELOG, encoding="utf-8").read()
@@ -311,7 +435,8 @@ def main():
 
     if has_tag(tag):
         die("tag %s already exists." % tag)
-    require_clean_tree()
+    if not args.prepare:
+        require_clean_tree()
 
     if args.tag_only:
         print("Plan:")
@@ -365,13 +490,44 @@ def main():
     if changelog.section_body(version) is not None:
         # The section was added in a feature or release PR: nothing to commit.
         print("CHANGELOG.md already has a [%s] section — nothing to commit.\n" % version)
+        if args.prepare:
+            # CI builds before it publishes; tag the commit that has the section.
+            prepublish(version, tag)
+            print_prepare(version, tag)
+            return
         print("Plan:")
         tag_main(version, tag, slug, args.yes)
         return
     new_text = changelog.release(version, date, args.notes)
+    if new_text is None and args.from_commits:
+        # Unattended bump: an empty [Unreleased] is not an error, the commits
+        # since the last release tag are the notes.
+        subjects = commits_since_release(version)
+        if not subjects and latest_version() is not None:
+            # Nothing landed since the last tag: releasing would ship an empty
+            # version. Fail with the reason instead of a confusing changelog error.
+            die("no commits since v%s, so there is nothing to release in %s. "
+                "Push a change to main first." % (latest_version(), version))
+        notes = note_bullets(subjects)
+        if notes:
+            print("Nothing under [Unreleased]; using %d commit subject(s) as notes.\n"
+                  % len(notes))
+            new_text = changelog.release(version, date, notes)
     if new_text is None:
-        die("nothing under [Unreleased] and no --notes; add changelog entries first.")
+        die("nothing under [Unreleased] and no --notes; add changelog entries to "
+            "[Unreleased] in CHANGELOG.md first, pass --notes \"…\", or pass "
+            "--from-commits to build the notes from the commit history.")
     new_text = changelog.update_links(new_text, version, slug)
+    if args.prepare:
+        # Commit and tag locally only: the Release workflow builds and tests
+        # first and publishes with --publish-prepared once they pass.
+        with open(CHANGELOG, "w", encoding="utf-8") as handle:
+            handle.write(new_text)
+        show_diff(original, new_text)
+        print()
+        prepublish(version, tag)
+        print_prepare(version, tag)
+        return
     if current_branch() != "main":
         die("run this on main (you are on %s); use --pr to open a release pull request "
             "from a branch." % current_branch())

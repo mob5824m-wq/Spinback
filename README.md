@@ -106,8 +106,15 @@ the APK for you. Pushing to `main` with `[release]` in the commit message
 automatically; ordinary commits never cut a version. To recover a failed
 release without creating a new version, run the workflow and enter its existing
 `vX.Y.Z` tag in the optional **tag** field; the tagged commit is checked out
-and the bump choice is ignored. The signed APK is also retained as a workflow
-artifact, even if publishing the GitHub Release fails.
+and the bump choice is ignored.
+
+The auto-bump paths build and test **before** anything is pushed: the version,
+its tag and the `Release X.Y.Z` commit only reach `main` once the APK builds
+and the unit tests pass, so a failed release leaves no tag or Release to clean
+up. Release notes come from `## [Unreleased]` when it has entries; when it is
+empty they are built from the commit subjects since the last release tag, so an
+unattended bump never fails on a missing changelog entry. The signed APK is also
+retained as a workflow artifact, even if publishing the GitHub Release fails.
 
 The release APK uses a debug key generated on each CI runner. Separate releases
 may therefore have different signing keys: Android may require uninstalling the
@@ -117,8 +124,10 @@ in-place upgrades.
 
 Add entries under `## [Unreleased]` in `CHANGELOG.md` as you go (or pass
 `--notes "…"`); the script moves them into the new version's section and the
-Release workflow uses them as the GitHub Release notes. A `-rc.1`-style
-suffix (e.g. `v0.2.0-rc.1`) becomes a pre-release.
+Release workflow uses them as the GitHub Release notes. When `[Unreleased]` is
+empty, `--from-commits` writes the commits since the last release tag instead
+(the workflow uses it for auto-bumps; local runs stay strict unless you pass it).
+A `-rc.1`-style suffix (e.g. `v0.2.0-rc.1`) becomes a pre-release.
 
 ## Docs
 

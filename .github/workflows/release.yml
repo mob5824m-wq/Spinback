@@ -8,9 +8,14 @@
 #
 # Every module's version is derived from the vX.Y.Z tag (root build.gradle.kts),
 # so the tag is the whole version bump — there is no version file to edit.
-# The auto-bump paths commit the CHANGELOG, tag, build and create the Release
-# in this one job, because a tag pushed with GITHUB_TOKEN would not trigger
-# a second workflow run.
+# The auto-bump paths prepare the CHANGELOG, build and test, and only then commit,
+# tag and create the Release in this one job, because a tag pushed with
+# GITHUB_TOKEN would not trigger a second workflow run. A failed build therefore
+# never publishes a version — there is nothing to clean up or retry.
+#
+# Auto-bump release notes default to the commits since the last release when
+# `## [Unreleased]` is empty, so Run workflow works with no changelog editing.
+# Hand-written `## [Unreleased]` entries always take precedence.
 name: Release
 
 on:
@@ -115,12 +120,24 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git fetch --quiet origin main:refs/remotes/origin/main
             git switch --force-create main origin/main
-            # release.py commits the CHANGELOG, tags and pushes both.
-            python3 scripts/release.py --bump "$bump" --yes
-            tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*')"
-            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            # Writes the CHANGELOG section, commits it and creates the tag
+            # locally, so the build below derives this version from the tag;
+            # nothing reaches origin until "Publish the prepared release"
+            # succeeds after the build and tests pass.
+            # --from-commits turns an empty [Unreleased] into the commit subjects
+            # since the last release, so an unattended bump never fails on a
+            # missing changelog entry — every commit since the last tag is still
+            # accounted for. Outputs: version / tag / prerelease.
+            prepared="$(python3 scripts/release.py --bump "$bump" --from-commits --prepare)"
+            echo "$prepared"
+            for key in version tag prerelease; do
+              value="$(sed -n "s/^${key}=//p" <<< "$prepared" | tail -1)"
+              [[ -n "$value" ]] || {
+                echo "::error title=Prepare failed::release.py did not report '$key'."
+                exit 1
+              }
+              echo "$key=$value" >> "$GITHUB_OUTPUT"
+            done
             echo "mode=auto-bump" >> "$GITHUB_OUTPUT"
           fi
 
@@ -142,6 +159,17 @@ jobs:
             echo "::error title=Version mismatch::Build reports '$derived' for tag v$VERSION."
             exit 1
           fi
+
+      - name: Publish the prepared release
+        if: steps.version.outputs.mode == 'auto-bump'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Nothing was pushed before this point: a failing build above leaves
+          # main, the tags and the Releases untouched. This commits the prepared
+          # CHANGELOG section, tags v$VERSION and pushes both.
+          python3 scripts/release.py --publish-prepared --yes "$VERSION"
 
       - name: Verify and stage APK
         id: apk
