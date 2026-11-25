@@ -180,6 +180,24 @@ jobs:
           apk="app/build/outputs/apk/release/app-release.apk"
           test -f "$apk" || { echo "::error::Release APK not found: $apk"; exit 1; }
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          # Guard against an over-stripped or empty APK: the app plus the
+          # vendored framework must contain a real classes.dex. A minified
+          # zero-dependency build is small (~100-300 KB), but a missing or
+          # near-empty DEX means R8 stripped the code and the APK will not
+          # install or will crash on launch.
+          echo "--- APK contents ---"
+          unzip -l "$apk"
+          dex_size="$(unzip -l "$apk" | awk '/classes[0-9]*\.dex/ {sum+=$1} END {print sum+0}')"
+          echo "classes.dex total uncompressed size: $dex_size bytes"
+          if [[ "$dex_size" -lt 50000 ]]; then
+            echo "::error title=APK too small::classes.dex is only $dex_size bytes; the build was likely over-stripped. Refusing to publish."
+            exit 1
+          fi
+          # The launcher activity and application class must be present.
+          if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -q "launchable-activity.*com.spinback.gplaymusic.MainActivity"; then
+            echo "::error title=APK missing launcher::MainActivity is not declared as launchable. Refusing to publish."
+            exit 1
+          fi
           mkdir -p release-assets
           named="spinback-google-play-music-${VERSION}-release.apk"
           cp "$apk" "release-assets/$named"
@@ -228,9 +246,12 @@ jobs:
           # AGP puts the AAR under build/outputs/aar but the sources JAR elsewhere
           # under build/, so search the whole build directory. Rename the APK to
           # carry the version so users can tell releases apart at a glance.
+          # Exclude intermediate outputs (e.g. intermediates/.../out.aar) so
+          # only the published artifacts are attached.
           assets=()
           while IFS= read -r file; do assets+=("$file"); done < <(
-            find soniq-base/build \( -name '*.aar' -o -name '*sources*.jar' \))
+            find soniq-base/build \( -name '*.aar' -o -name '*sources*.jar' \) \
+              | grep -v '/intermediates/' | sort)
           assets+=("$APK")
           echo "assets: ${assets[*]}"
           if [[ " ${assets[*]} " != *sources* ]]; then

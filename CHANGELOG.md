@@ -7,6 +7,16 @@ All notable changes to Spinback are documented here. The format follows
 
 ## [Unreleased]
 
+- Fixed the release APK failing to install (reported as ~119 KB): the app
+  shipped with no custom ProGuard rules, so R8 full mode could over-strip
+  the framework code. Added `app/proguard-rules.pro` pinning the
+  application, launcher activity, provider and framework entry points, and
+  wired it into the release build. Both workflows now verify the APK
+  contains a real `classes.dex` and a launchable `MainActivity` before
+  publishing, so an over-stripped build fails CI instead of shipping.
+- Fixed the Release workflow attaching an intermediate `out.aar` alongside
+  the library AAR: the asset search now excludes `intermediates/` outputs.
+
 - Fixed the Release workflow failing on `error: nothing under [Unreleased] and
   no --notes` when **Actions → Release → Run workflow** was used with an empty
   `[Unreleased]` section: auto-bumps now fall back to the commit subjects since
