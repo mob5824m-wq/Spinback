@@ -7,6 +7,8 @@ All notable changes to Spinback are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-25
+
 - Fixed the release APK failing to install (reported as ~119 KB): the app
   shipped with no custom ProGuard rules, so R8 full mode could over-strip
   the framework code. Added `app/proguard-rules.pro` pinning the
@@ -43,5 +45,6 @@ All notable changes to Spinback are documented here. The format follows
   Actions → Release → Run workflow or a `[release]` commit message on `main`.
   `scripts/release.py` gained `--bump patch|minor|major`.
 
-[unreleased]: https://github.com/mob5824m-wq/Spinback/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/mob5824m-wq/Spinback/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/mob5824m-wq/Spinback/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/mob5824m-wq/Spinback/releases/tag/v1.0.0
