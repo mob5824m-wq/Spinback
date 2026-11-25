@@ -46,6 +46,25 @@ jobs:
           set -o pipefail
           ./gradlew :soniq-base:testDebugUnitTest --no-daemon --stacktrace 2>&1 | tee test.log
 
+      - name: Verify APK contents
+        run: |
+          set -euo pipefail
+          for apk in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
+            [[ -f "$apk" ]] || continue
+            echo "--- $apk ---"
+            unzip -l "$apk"
+            dex_size="$(unzip -l "$apk" | awk '/classes[0-9]*\.dex/ {sum+=$1} END {print sum+0}')"
+            echo "classes.dex total uncompressed size: $dex_size bytes"
+            if [[ "$dex_size" -lt 50000 ]]; then
+              echo "::error title=APK too small::$apk has only $dex_size bytes of DEX; the build was likely over-stripped."
+              exit 1
+            fi
+            if ! "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" | grep -q "launchable-activity.*com.spinback.gplaymusic.MainActivity"; then
+              echo "::error title=APK missing launcher::$apk does not declare MainActivity as launchable."
+              exit 1
+            fi
+          done
+
       # Job logs are not reachable from every environment that maintains this
       # repository; repeat the error summary as annotations so it is visible
       # through the checks API.
