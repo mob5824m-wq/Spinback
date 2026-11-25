@@ -246,12 +246,13 @@ jobs:
           # AGP puts the AAR under build/outputs/aar but the sources JAR elsewhere
           # under build/, so search the whole build directory. Rename the APK to
           # carry the version so users can tell releases apart at a glance.
-          # Exclude intermediate outputs (e.g. intermediates/.../out.aar) so
-          # only the published artifacts are attached.
+          # Exclude the intermediate out.aar (build/intermediates/.../out.aar)
+          # so only the published artifacts are attached; the sources JAR
+          # legitimately lives under intermediates/ in AGP 8, so keep it.
           assets=()
           while IFS= read -r file; do assets+=("$file"); done < <(
             find soniq-base/build \( -name '*.aar' -o -name '*sources*.jar' \) \
-              | grep -v '/intermediates/' | sort)
+              | grep -v '/out\.aar$' | sort)
           assets+=("$APK")
           echo "assets: ${assets[*]}"
           if [[ " ${assets[*]} " != *sources* ]]; then
